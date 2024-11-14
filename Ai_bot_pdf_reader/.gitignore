@@ -1,0 +1,5 @@
+# Ignore FAISS index files
+faiss_index
+
+# Ignore virtual environment folder
+env
