@@ -1,12 +1,14 @@
-import React from 'react'
-import Sidebar from './Components/Sidebar'
+import React from "react";
+import Sidebar from "./Components/Sidebar";
+import Home from "./Page/Home";
 
 const App = () => {
   return (
-    <div>
-        <Sidebar/>
+    <div className="flex w-full h-screen">
+      <Sidebar />
+      <Home />
     </div>
-  )
-}
+  );
+};
 
-export default App
+export default App;
