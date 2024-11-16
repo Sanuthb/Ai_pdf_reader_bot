@@ -42,8 +42,6 @@ const Upload_comp = () => {
         },
       });
       setUploadStatus("Files uploaded successfully!"); 
-      const processedFiles = response.data.files || []; 
-      setUploadedPDFs((prev) => [...prev, ...processedFiles]);
     } catch (error) {
       console.error("Error uploading files:", error);
       setUploadStatus("Error uploading files!"); 

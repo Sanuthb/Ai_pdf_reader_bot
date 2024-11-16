@@ -13,6 +13,9 @@ import os
 from dotenv import load_dotenv
 import google.generativeai as genai
 from fastapi.middleware.cors import CORSMiddleware
+from Db import get_db, PDFData
+from fastapi import Depends
+from sqlalchemy.orm import Session
 
 load_dotenv()
 
@@ -46,68 +49,47 @@ def split_text_into_chunks(text):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=10000, chunk_overlap=1000)
     return text_splitter.split_text(text)
 
-# Function to create a vector store
-def create_vector_store(text_chunks):
+# Function to create a vector store for a specific file
+def create_vector_store(text_chunks, filename):
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
-    vector_store.save_local("faiss_index")
-
-# Function to extract images from PDF files
-def extract_images_from_pdfs(files):
-    images = []
-    for file in files:
-        pdf_bytes = file.file.read()
-        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-        for page_num in range(len(doc)):
-            page = doc.load_page(page_num)
-            for img_index, img in enumerate(page.get_images(full=True)):
-                xref = img[0]
-                base_image = doc.extract_image(xref)
-                image_bytes = base_image["image"]
-                image = Image.open(io.BytesIO(image_bytes))
-                images.append((f"Page {page_num + 1} - Image {img_index + 1}", image))
-    return images
+    vector_store.save_local(f"faiss_index_{filename}")
 
 # Endpoint to upload and process PDFs
 @app.post("/upload/")
-async def upload_pdfs(files: list[UploadFile]):
+async def upload_pdfs(files: list[UploadFile], db: Session = Depends(get_db)):
     try:
-        # Extract text from PDFs
-        raw_text = extract_text_from_pdfs(files)
-        
-        # Split text into chunks
-        text_chunks = split_text_into_chunks(raw_text)
-        
-        # Create vector store
-        create_vector_store(text_chunks)
-        filenames = [file.filename for file in files]
+        filenames = []
+        for file in files:
+            # Extract text from the PDF
+            raw_text = extract_text_from_pdfs([file])
+            
+            # Split text into chunks
+            text_chunks = split_text_into_chunks(raw_text)
+            
+            # Create a vector store for this specific file
+            create_vector_store(text_chunks, file.filename)
+            
+            # Save file information to the database
+            pdf_data = PDFData(file_name=file.filename)
+            db.add(pdf_data)
+            db.commit()
+            db.refresh(pdf_data)
+            filenames.append(file.filename)
         
         return JSONResponse({"message": "PDFs processed successfully!", "files": filenames})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
-# Endpoint to extract images from PDFs
-@app.post("/extract-images/")
-async def extract_images(files: list[UploadFile]):
-    try:
-        images = extract_images_from_pdfs(files)
-        if not images:
-            return JSONResponse({"message": "No images found in the uploaded PDFs."})
-        
-        # Return image data as base64 (optional)
-        image_data = [
-            {"name": img[0], "image_bytes": img[1].tobytes()} for img in images
-        ]
-        return JSONResponse({"message": "Images extracted successfully!", "images": image_data})
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
-
 # Endpoint to handle conversational queries
 @app.post("/ask/")
-async def ask_question(question: str = Form(...)):
+async def ask_question(question: str = Form(...), pdf_name: str = Form(...)):
     try:
+        # Load vector store for the specific PDF
         embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
-        vector_store = FAISS.load_local("faiss_index", embeddings)
+        vector_store = FAISS.load_local(f"faiss_index_{pdf_name}", embeddings, allow_dangerous_deserialization=True)
+        
+        # Perform similarity search
         docs = vector_store.similarity_search(question)
         
         # Create a conversational chain
@@ -126,3 +108,52 @@ async def ask_question(question: str = Form(...)):
         return JSONResponse({"answer": response["output_text"]})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+    
+
+
+@app.post("/quiz/")
+async def generate_quiz(pdf_name: str = Form(...)):
+    print(pdf_name)
+    try:
+        # Load the embeddings for the specific PDF
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+        vector_store = FAISS.load_local(f"faiss_index_{pdf_name}", embeddings, allow_dangerous_deserialization=True)
+        print(pdf_name)
+        # Retrieve documents from the vector store
+        docs = vector_store.similarity_search("Generate a quiz")  # Query for quiz generation
+        print(pdf_name)
+        # If no relevant documents are found, return an error
+        if not docs:
+            return JSONResponse({"error": f"No relevant documents found for {pdf_name}."}, status_code=404)
+        
+        # Quiz generation prompt template
+        quiz_prompt = """
+        Generate a quiz from the following context. The quiz should contain multiple-choice questions
+        with 4 options each, and clearly indicate the correct answer.\n\n
+        Context:\n {context}\n
+        Quiz:
+        """
+        prompt = PromptTemplate(template=quiz_prompt, input_variables=["context"])
+        
+        # Initialize the model
+        model = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.3)
+        
+        # Create the chain for generating the quiz
+        chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
+        
+        # Generate the quiz
+        response = chain.invoke({"input_documents": docs, "question": "Generate a quiz"})
+        
+        return JSONResponse({"quiz": response["output_text"]})
+
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+    
+
+# Endpoint to fetch data from the database
+@app.get("/fetch_files/")
+async def fetch_files(db: Session = Depends(get_db)):
+    pdf_data = db.query(PDFData).all() 
+    if not pdf_data:
+        return JSONResponse({"message": "No PDF files found in the database.", "files": []})
+    return {"files": [pdf.file_name for pdf in pdf_data]}

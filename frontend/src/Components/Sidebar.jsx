@@ -1,25 +1,31 @@
-import React, { useState } from "react";
-import { Plus, FolderDown, FileText } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Plus, FileText, MessageSquareMore } from "lucide-react";
 import Blank_comp from "./Blank_comp";
 import { UserButton, useUser } from "@clerk/clerk-react";
 import Signin from "./Signin";
-import { useRecoilValue, useSetRecoilState } from "recoil";
-import { uploadedPDFsAtom ,selectedPDFAtom} from "../Atoms/atoms";
+import { useNavigate } from "react-router-dom";
+import {fetch_data} from "../apis/api"
 
-const Sidebar = () => {
+const Sidebar = React.memo(() => {
   const { isSignedIn } = useUser();
   const [signin, seSignin] = useState(false);
-  const uploadedPDFs = useRecoilValue(uploadedPDFsAtom);
-  const setSelectedPDF = useSetRecoilState(selectedPDFAtom);
+  const [files,setFiles] = useState([]);
+
+  const navigate = useNavigate(); 
+
+  useEffect(() => {
+    const loadfiles  = async() =>{
+      const fetchfiles = await fetch_data()
+      setFiles(fetchfiles)
+    }
+    loadfiles()
+  },[])
 
   const handlesignin = () => {
     if (!isSignedIn) {
       seSignin(true);
     }
   };
-
-  // const handlenewchat = () => {};
-
   return (
     <div className="bg-secondary w-[16rem] h-screen text-white font-primaryFontFamily px-5 py-5 flex justify-between flex-col">
       <div className="flex flex-col gap-5">
@@ -35,23 +41,26 @@ const Sidebar = () => {
             New Chat
           </button>
           <button className="w-full p-2 flex items-center justify-center gap-4 border-[.1rem] border-gray-500 rounded-lg hover:bg-[#3C3D37] text-sm ">
-            <FolderDown size={15} /> New Folder
+            <MessageSquareMore size={20} /> Interact 
           </button>
         </div>
-
-        <div className="">
-          {uploadedPDFs.length > 0 &&
-            uploadedPDFs.map((pdf, index) => (
-              <button
-                key={index}
-                className="bg-[#3C3D37] w-full py-2 rounded-lg flex items-center justify-center gap-5"
-                onClick={() => setSelectedPDF(pdf)}
-              >
-                <FileText />
-                {pdf}
-              </button>
-            ))}
-        </div>
+        {
+          isSignedIn && (
+            <div className="flex flex-col gap-5">
+            {files.length > 0 &&
+              files.map((pdf, index) => (
+                <button
+                  key={index}
+                  className="bg-[#3C3D37] w-full py-2 rounded-lg flex items-center justify-center gap-5"
+                  onClick={()=>{navigate(`/dashboard/chat/${pdf}`)}}
+                >
+                  <FileText />
+                  {pdf}
+                </button>
+              ))}
+          </div>
+          )
+        }
       </div>
       {!isSignedIn && (
         <div className="flex items-center justify-center w-full flex-col gap-5">
@@ -78,6 +87,6 @@ const Sidebar = () => {
       {signin && <Signin />}
     </div>
   );
-};
+});
 
 export default Sidebar;

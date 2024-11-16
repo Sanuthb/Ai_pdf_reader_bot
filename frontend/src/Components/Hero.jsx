@@ -3,7 +3,7 @@ import Upload_comp from './Upload_comp'
 
 const Hero = () => {
   return (
-    <div className="w-full overflow-y-scroll h-full font-primaryFontFamily px-5 py-10 flex flex-col gap-10">
+    <div className="w-[80%] overflow-y-scroll h-full font-primaryFontFamily px-5 py-10 flex flex-col gap-10">
     <div className="relative flex  items-center justify-center flex-col w-full p-5 gap-4 ">
       <h1 className="text-5xl font-semibold ">
         Chat with any
