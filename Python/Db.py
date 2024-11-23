@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Text
+from sqlalchemy import create_engine, Column, Integer, String, Text,LargeBinary
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
@@ -20,6 +20,8 @@ class PDFData(Base):
     __tablename__ = "pdf_data"
     id = Column(Integer, primary_key=True, index=True)
     file_name = Column(String, index=True)
+    file_content = Column(LargeBinary, nullable=True)  # Add this column
+
 
 # Create tables
 Base.metadata.create_all(bind=engine)

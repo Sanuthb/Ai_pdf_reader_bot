@@ -1,5 +1,5 @@
 from fastapi import FastAPI, UploadFile, Form
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
@@ -15,7 +15,7 @@ import google.generativeai as genai
 from fastapi.middleware.cors import CORSMiddleware
 from Db import get_db, PDFData
 from fastapi import Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session  
 
 load_dotenv()
 
@@ -55,12 +55,29 @@ def create_vector_store(text_chunks, filename):
     vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
     vector_store.save_local(f"faiss_index_{filename}")
 
+
+# Function to summarize text
+def summarize_text(text):
+    model = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.3)
+    prompt_template = """
+    Summarize the following text into a concise paragraph:
+    {text}
+    Summary:
+    """
+    prompt = PromptTemplate(template=prompt_template, input_variables=["text"])
+    chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
+    response = chain.invoke({"input_documents": [{"page_content": text}]})
+    return response["output_text"]
+
+
 # Endpoint to upload and process PDFs
 @app.post("/upload/")
 async def upload_pdfs(files: list[UploadFile], db: Session = Depends(get_db)):
     try:
-        filenames = []
+        results = []
         for file in files:
+            file_content = await file.read()
+
             # Extract text from the PDF
             raw_text = extract_text_from_pdfs([file])
             
@@ -70,14 +87,41 @@ async def upload_pdfs(files: list[UploadFile], db: Session = Depends(get_db)):
             # Create a vector store for this specific file
             create_vector_store(text_chunks, file.filename)
             
+            # Load the vector store
+            embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+            vector_store = FAISS.load_local(f"faiss_index_{file.filename}", embeddings, allow_dangerous_deserialization=True)
+            
+            # Perform a similarity search to retrieve all chunks for summarization
+            docs = vector_store.similarity_search("Summarize this document")
+            
+            # Generate summary using the same model and prompt approach as in the `ask` endpoint
+            prompt_template = """
+            Summarize the following context into a in depth paragraphs:
+            Context:\n {context}\n
+            Summary:
+            """
+            prompt = PromptTemplate(template=prompt_template, input_variables=["context"])
+            model = ChatGoogleGenerativeAI(model="gemini-pro", temperature=0.3)
+            chain = load_qa_chain(model, chain_type="stuff", prompt=prompt)
+            response = chain.invoke({"input_documents": docs, "question": "Summarize this document"})
+            summary = response["output_text"]
+            
             # Save file information to the database
-            pdf_data = PDFData(file_name=file.filename)
+            pdf_data = PDFData(
+                file_name=file.filename, 
+                file_content=file_content
+            )            
             db.add(pdf_data)
             db.commit()
             db.refresh(pdf_data)
-            filenames.append(file.filename)
+            
+            # Append results
+            results.append({
+                "file_name": file.filename,
+                "summary": summary
+            })
         
-        return JSONResponse({"message": "PDFs processed successfully!", "files": filenames})
+        return JSONResponse({"message": "PDFs processed successfully!", "results": results})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
@@ -157,3 +201,31 @@ async def fetch_files(db: Session = Depends(get_db)):
     if not pdf_data:
         return JSONResponse({"message": "No PDF files found in the database.", "files": []})
     return {"files": [pdf.file_name for pdf in pdf_data]}
+
+
+@app.post("/view_pdf/")
+async def view_pdf(pdf_name: str = Form(...), db: Session = Depends(get_db)):
+    try:
+        # Retrieve the PDF data from the database
+        pdf_data = db.query(PDFData).filter(PDFData.file_name == pdf_name).first()
+        if not pdf_data:
+            return JSONResponse({"error": f"PDF '{pdf_name}' not found in the database."}, status_code=404)
+
+        # Create a BytesIO stream for the PDF content
+        pdf_stream = io.BytesIO(pdf_data.file_content)
+
+        # Add headers to support iframe embedding
+        headers = {
+            "Content-Disposition": f"inline; filename={pdf_name}",
+            "Access-Control-Allow-Origin": "http://localhost:5173",  # Allowing your frontend to access the PDF
+            "Access-Control-Allow-Methods": "GET, POST",
+            "Access-Control-Allow-Headers": "Content-Type",
+        }
+
+        return StreamingResponse(
+            pdf_stream, 
+            media_type="application/pdf",
+            headers=headers
+        )
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
