@@ -1,4 +1,3 @@
-import React from 'react'
 import Upload_comp from './Upload_comp'
 
 const Hero = () => {
@@ -13,7 +12,7 @@ const Hero = () => {
       </h1>
       <p className="w-1/2 text-center">
         Join millions of students, researchers and professionals to
-        instantly  answer questions and understand research with AI.
+        instantly answer questions and understand research with AI.
       </p>
     </div>
     <div className="flex w-full items-center justify-center">
