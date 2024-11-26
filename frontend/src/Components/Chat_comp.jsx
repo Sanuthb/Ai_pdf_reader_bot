@@ -1,25 +1,37 @@
-import  { useState } from "react";
+import { useState } from "react";
 import { Send } from "lucide-react";
 import axios from "axios";
 import { useParams } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { addMessage } from "../store/slices/chatSlice";
+import QuizMessage from "./QuizMessage";
 
 const ChatComp = () => {
   const [question, setQuestion] = useState("");
   const { filename } = useParams();
+  const dispatch = useDispatch();
 
-  const [messages, setMessages] = useState([
-    {
-      type: "response",
-      text: "Welcome to the PDF Interaction Hub! 🌟 Easily explore, chat, and engage with your PDFs like never before.",
-    },
-  ]);
+  const messages = useSelector(
+    (state) =>
+      state.chat.conversations[filename] || [
+        {
+          type: "response",
+          text: "Welcome to the PDF Interaction Hub! 🌟 Easily explore, chat, and engage with your PDFs like never before.",
+        },
+      ]
+  );
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault(); // Make preventDefault optional since it might be called without event
     if (!question.trim()) return;
 
     // Add user message
-    setMessages((prev) => [...prev, { type: "user", text: question }]);
+    dispatch(
+      addMessage({
+        pdfName: filename,
+        message: { type: "user", text: question },
+      })
+    );
 
     try {
       const response = await axios.post(
@@ -33,30 +45,39 @@ const ChatComp = () => {
       );
 
       // Add bot response
-      setMessages((prev) => [
-        ...prev,
-        { type: "response", text: response.data.answer },
-      ]);
+      dispatch(
+        addMessage({
+          pdfName: filename,
+          message: { type: "response", text: response.data.answer },
+        })
+      );
     } catch (error) {
       console.error("Error fetching response:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          type: "response",
-          text: "Sorry, something went wrong. Try again later.",
-        },
-      ]);
+      dispatch(
+        addMessage({
+          pdfName: filename,
+          message: {
+            type: "response",
+            text: "Sorry, something went wrong. Try again later.",
+          },
+        })
+      );
     }
-
-    // Clear the input
     setQuestion("");
   };
 
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault(); // Prevent default to avoid newline in input
+      handleSubmit();
+    }
+  };
+
   const handleQuizClick = async () => {
-        try {
+    try {
       const response = await axios.post(
         "http://localhost:8000/quiz/",
-        {"pdf_name":filename},
+        { pdf_name: filename },
         {
           headers: {
             "Content-Type": "multipart/form-data",
@@ -65,19 +86,23 @@ const ChatComp = () => {
       );
 
       // Add the quiz to messages
-      setMessages((prev) => [
-        ...prev,
-        { type: "response", text: response.data.quiz },
-      ]);
+      dispatch(
+        addMessage({
+          pdfName: filename,
+          message: { type: "response", text: response.data.quiz },
+        })
+      );
     } catch (error) {
       console.error("Error fetching quiz:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          type: "response",
-          text: "Sorry, something went wrong while generating the quiz.",
-        },
-      ]);
+      dispatch(
+        addMessage({
+          pdfName: filename,
+          message: {
+            type: "response",
+            text: "Sorry, something went wrong while generating the quiz.",
+          },
+        })
+      );
     }
   };
 
@@ -95,8 +120,6 @@ const ChatComp = () => {
           </button>
         </div>
       </div>
-
-      {/* Messages Area */}
       <div className="w-full h-[80%] overflow-y-scroll p-3 flex flex-col gap-3">
         {messages.map((msg, index) => (
           <div
@@ -105,20 +128,16 @@ const ChatComp = () => {
               msg.type === "user" ? "justify-end" : "justify-start"
             }`}
           >
-            <p
-              className={`max-w-[60%] p-3 rounded-lg ${
-                msg.type === "user"
-                  ? "bg-primary text-white"
-                  : "bg-[#3c3d37] text-white"
-              }`}
-            >
-              {msg.text}
-            </p>
+            {msg.type === "user" ? (
+              <p className="max-w-[60%] p-3 rounded-lg bg-primary text-white">
+                {msg.text}
+              </p>
+            ) : (
+              <QuizMessage text={msg.text} />
+            )}
           </div>
         ))}
       </div>
-
-      {/* Input Area */}
       <div className="w-full h-14 border-[.1rem] border-gray-600 flex justify-between">
         <input
           type="text"
@@ -126,6 +145,7 @@ const ChatComp = () => {
           placeholder="Any Questions?"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={handleKeyPress}
         />
         <button
           onClick={handleSubmit}

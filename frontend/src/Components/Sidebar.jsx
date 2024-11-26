@@ -4,26 +4,32 @@ import Blank_comp from "./Blank_comp";
 import { UserButton, useUser } from "@clerk/clerk-react";
 import Signin from "./Signin";
 import { useNavigate } from "react-router-dom";
-import {fetch_data} from "../apis/api"
+import { fetch_data } from "../apis/api";
+import { useDispatch, useSelector } from "react-redux";
+import { setFiles, setSelectedFile } from "../store/slices/fileSlice";
 
 const Sidebar = React.memo(() => {
   const { isSignedIn } = useUser();
-  const [signin, seSignin] = useState(false);
-  const [files,setFiles] = useState([]);
-
-  const navigate = useNavigate(); 
+  const [signin, setSignin] = useState(false);
+  const dispatch = useDispatch();
+  const files = useSelector((state) => state.files.uploadedFiles);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const loadfiles  = async() =>{
-      const fetchfiles = await fetch_data()
-      setFiles(fetchfiles)
-    }
-    loadfiles()
-  },[])
+    const loadFiles = async () => {
+      const fetchedFiles = await fetch_data();
+      dispatch(setFiles(fetchedFiles));
+    };
+    loadFiles();
+  }, [dispatch]);
+  const handleFileClick = (pdf) => {
+    dispatch(setSelectedFile(pdf));
+    navigate(`/dashboard/chat/${pdf}`);
+  };
 
   const handlesignin = () => {
     if (!isSignedIn) {
-      seSignin(true);
+      setSignin(true);
     }
   };
   return (
@@ -41,26 +47,24 @@ const Sidebar = React.memo(() => {
             New Chat
           </button>
           <button className="w-full p-2 flex items-center justify-center gap-4 border-[.1rem] border-gray-500 rounded-lg hover:bg-[#3C3D37] text-sm ">
-            <MessageSquareMore size={20} /> Interact 
+            <MessageSquareMore size={20} /> Interact
           </button>
         </div>
-        {
-          isSignedIn && (
-            <div className="flex flex-col gap-5">
+        {isSignedIn && (
+          <div className="flex flex-col gap-5">
             {files.length > 0 &&
               files.map((pdf, index) => (
                 <button
                   key={index}
                   className="bg-[#3C3D37] w-full py-2 rounded-lg flex items-center justify-center gap-5"
-                  onClick={()=>{navigate(`/dashboard/chat/${pdf}`)}}
+                  onClick={() => handleFileClick(pdf)}
                 >
                   <FileText />
                   {pdf}
                 </button>
               ))}
           </div>
-          )
-        }
+        )}
       </div>
       {!isSignedIn && (
         <div className="flex items-center justify-center w-full flex-col gap-5">
