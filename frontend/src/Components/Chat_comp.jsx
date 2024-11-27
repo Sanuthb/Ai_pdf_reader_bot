@@ -5,9 +5,11 @@ import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { addMessage } from "../store/slices/chatSlice";
 import QuizMessage from "./QuizMessage";
+import '../Style/loading.css';
 
 const ChatComp = () => {
   const [question, setQuestion] = useState("");
+  const [loading, setLoading] = useState(false);
   const { filename } = useParams();
   const dispatch = useDispatch();
 
@@ -22,16 +24,16 @@ const ChatComp = () => {
   );
 
   const handleSubmit = async (e) => {
-    e?.preventDefault(); // Make preventDefault optional since it might be called without event
+    e?.preventDefault();
     if (!question.trim()) return;
 
-    // Add user message
     dispatch(
       addMessage({
         pdfName: filename,
         message: { type: "user", text: question },
       })
     );
+    setLoading(true); // Set loading to true
 
     try {
       const response = await axios.post(
@@ -44,7 +46,6 @@ const ChatComp = () => {
         }
       );
 
-      // Add bot response
       dispatch(
         addMessage({
           pdfName: filename,
@@ -62,18 +63,22 @@ const ChatComp = () => {
           },
         })
       );
+    } finally {
+      setLoading(false); // Reset loading state
     }
+
     setQuestion("");
   };
 
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault(); // Prevent default to avoid newline in input
+      e.preventDefault();
       handleSubmit();
     }
   };
 
   const handleQuizClick = async () => {
+    setLoading(true); // Set loading to true for quiz generation
     try {
       const response = await axios.post(
         "http://localhost:8000/quiz/",
@@ -85,11 +90,11 @@ const ChatComp = () => {
         }
       );
 
-      // Add the quiz to messages
+      // Add a flag to indicate it's a quiz message
       dispatch(
         addMessage({
           pdfName: filename,
-          message: { type: "response", text: response.data.quiz },
+          message: { type: "response", text: response.data.quiz, isQuiz: true },
         })
       );
     } catch (error) {
@@ -103,6 +108,8 @@ const ChatComp = () => {
           },
         })
       );
+    } finally {
+      setLoading(false); // Reset loading state
     }
   };
 
@@ -129,14 +136,34 @@ const ChatComp = () => {
             }`}
           >
             {msg.type === "user" ? (
-              <p className="max-w-[60%] p-3 rounded-lg bg-primary text-white">
+              <p className="max-w-[60%] p-3 rounded-lg bg-[#3c3d37] text-white">
                 {msg.text}
               </p>
             ) : (
-              <QuizMessage text={msg.text} />
+              // Check if the message is a quiz and render accordingly
+              msg.isQuiz ? (
+                <QuizMessage quiz={msg.text} />
+              ) : (
+                <p className="max-w-[60%] p-3 rounded-lg bg-[#3c3d37] text-white">
+                  {msg.text}
+                </p>
+              )
             )}
           </div>
         ))}
+        {loading && (
+          <div className="flex flex-col gap-2">
+            <div className="loading-bar">
+              <div className="loading-gradient bar1"></div>
+            </div>
+            <div className="loading-bar ">
+              <div className="loading-gradient bar2"></div>
+            </div>
+            <div className="loading-bar">
+              <div className="loading-gradient bar3"></div>
+            </div>
+          </div>
+        )}
       </div>
       <div className="w-full h-14 border-[.1rem] border-gray-600 flex justify-between">
         <input

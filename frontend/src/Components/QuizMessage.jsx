@@ -1,45 +1,42 @@
-const QuizMessage = ({ text }) => {
-  // Check if the message is a quiz (contains "Quiz" and numbered questions)
-  const isQuiz = text.includes("Quiz") && /\d+\.\s+What/.test(text);
+import React from 'react';
 
-  if (!isQuiz)
-    return (
-      <p className="max-w-[60%] p-3 rounded-lg bg-[#3c3d37] text-white">
-        {text}
-      </p>
-    );
+const QuizMessage = ({ quiz }) => {
+  // Split the quiz into individual questions
+  const questions = quiz.split(/\*\*\d+\.\s/).filter(Boolean);
 
-  // Split the quiz into questions
-  const questions = text.split(/(?=\*\*\d+\.\s+What)/).filter((q) => q.trim());
+  console.log(questions)
 
   return (
-    <div className="max-w-[80%] p-4 rounded-lg bg-[#3c3d37] text-white">
+    <div className="max-w-[80%] p-4 rounded-lg bg-gray-800 text-white">
       <h2 className="text-xl font-bold mb-4">Quiz</h2>
       <div className="space-y-6">
-        {questions.map((question, idx) => {
-          // Extract question components
-          const [questionText, options, answer] = question
-            .replace(/\*\*/g, "")
-            .split(/(?=\(a\))/)
-            .map((str) => str.trim());
+        {questions.map((questionBlock, index) => {
+          // Split the question and the correct answer
+          const [questionAndOptions, correctAnswerBlock] = questionBlock.split(
+            '**Correct Answer:'
+          );
 
-          // Format options
-          const optionsList = options
-            ?.split(/(?=\([a-d]\))/)
-            .map((opt) => opt.trim())
-            .filter(Boolean);
+          // Extract the question text and options
+          const [questionText, ...options] = questionAndOptions
+            ?.split(/(?=\(A\))/)
+            .map((item) => item.trim());
+
+          // Clean up the correct answer
+          const correctAnswer = correctAnswerBlock?.trim();
 
           return (
-            <div key={idx} className="space-y-2">
-              <p className="font-semibold">{questionText}</p>
+            <div key={index} className="space-y-2">
+              <p className="font-semibold">
+                {index + 1}. {questionText}
+              </p>
               <div className="pl-4 space-y-1">
-                {optionsList?.map((option, optIdx) => (
+                {options.map((option, optionIndex) => (
                   <p
-                    key={optIdx}
+                    key={optionIndex}
                     className={`${
-                      answer?.includes(option.charAt(1))
-                        ? "text-green-400 font-medium"
-                        : ""
+                      correctAnswer?.includes(option.charAt(1))
+                        ? 'text-green-400 font-medium'
+                        : ''
                     }`}
                   >
                     {option}
@@ -47,7 +44,7 @@ const QuizMessage = ({ text }) => {
                 ))}
               </div>
               <p className="text-green-400 font-medium mt-2">
-                {answer?.replace("Correct Answer:", "✓ Correct Answer:")}
+                Correct Answer: {correctAnswer}
               </p>
             </div>
           );
@@ -57,4 +54,6 @@ const QuizMessage = ({ text }) => {
   );
 };
 
-export default QuizMessage
+
+
+export default QuizMessage;

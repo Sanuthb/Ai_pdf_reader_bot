@@ -157,12 +157,10 @@ async def ask_question(question: str = Form(...), pdf_name: str = Form(...)):
 
 @app.post("/quiz/")
 async def generate_quiz(pdf_name: str = Form(...)):
-    print(pdf_name)
     try:
         # Load the embeddings for the specific PDF
         embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
         vector_store = FAISS.load_local(f"faiss_index_{pdf_name}", embeddings, allow_dangerous_deserialization=True)
-        print(pdf_name)
         # Retrieve documents from the vector store
         docs = vector_store.similarity_search("Generate a quiz")  # Query for quiz generation
         print(pdf_name)
@@ -172,11 +170,17 @@ async def generate_quiz(pdf_name: str = Form(...)):
         
         # Quiz generation prompt template
         quiz_prompt = """
-        Generate a quiz from the following context. The quiz should contain multiple-choice questions
-        with 4 options each, and clearly indicate the correct answer.\n\n
-        Context:\n {context}\n
+        Generate a quiz from the following context. The quiz should contain multiple-choice questions with 4 options each. Clearly indicate the correct answer using the format: "Correct Answer: [option letter]". Avoid using any special formatting symbols like **. Use plain text formatting.
+
+        Context:
+        {context}
+
         Quiz:
         """
+
+
+
+
         prompt = PromptTemplate(template=quiz_prompt, input_variables=["context"])
         
         # Initialize the model

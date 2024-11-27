@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Plus, FileText, MessageSquareMore } from "lucide-react";
 import Blank_comp from "./Blank_comp";
 import { UserButton, useUser } from "@clerk/clerk-react";
 import Signin from "./Signin";
 import { useNavigate } from "react-router-dom";
-import { fetch_data } from "../apis/api";
 import { useDispatch, useSelector } from "react-redux";
 import { setFiles, setSelectedFile } from "../store/slices/fileSlice";
+import fetch_data from "../apis/api";
+import { addMessage } from "../store/slices/chatSlice";
+
 
 const Sidebar = React.memo(() => {
   const { isSignedIn } = useUser();
@@ -14,6 +16,81 @@ const Sidebar = React.memo(() => {
   const dispatch = useDispatch();
   const files = useSelector((state) => state.files.uploadedFiles);
   const navigate = useNavigate();
+  const newchatref = useRef(null);
+
+  const handleFileSelect = (event) => {
+    const selectedFiles = event.target.files;
+    handleFileUpload(selectedFiles);
+  };
+  
+  const handleFileUpload = async (selectedFiles) => {
+    setIsUploading(true);
+    const formData = new FormData();
+    Array.from(selectedFiles).forEach((file) => {
+      formData.append("files", file);
+    });
+
+    try {
+      const response = await axios.post(
+        "http://localhost:8000/upload/",
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+
+      handleUploadSuccess(response.data.results);
+    } catch (error) {
+      console.error("Error uploading files:", error);
+    } 
+  };
+
+  const handleUploadSuccess = (results) => {
+    results.forEach((result) => {
+      const formattedSummary = formatSummary(result.summary);
+
+      // Add system message about successful upload
+      dispatch(
+        addMessage({
+          pdfName: result.file_name,
+          message: {
+            type: "response",
+            text: `✨ PDF "${result.file_name}" has been successfully uploaded! Here's a summary of its contents:`,
+          },
+        })
+      );
+
+      // Add the formatted summary
+      dispatch(
+        addMessage({
+          pdfName: result.file_name,
+          message: {
+            type: "response",
+            text: formattedSummary,
+          },
+        })
+      );
+
+      // Add a helpful prompt
+      dispatch(
+        addMessage({
+          pdfName: result.file_name,
+          message: {
+            type: "response",
+            text: "You can now ask questions about this document or generate a quiz to test your understanding! 📚",
+          },
+        })
+      );
+    });
+
+    // Navigate to the chat interface for the first uploaded file
+    if (results.length > 0) {
+      navigate(`/dashboard/chat/${results[0].file_name}`);
+    }
+  };
+
 
   useEffect(() => {
     const loadFiles = async () => {
@@ -42,7 +119,21 @@ const Sidebar = React.memo(() => {
           </h1>
         </div>
         <div className="flex items-center flex-col gap-5 mt-5">
-          <button className="w-full p-2 flex items-center justify-center gap-4 border-[.1rem] border-gray-500 rounded-lg hover:bg-[#3C3D37] text-sm">
+          <input
+            type="file"
+            multiple
+            accept=".pdf"
+            className="hidden"
+            onChange={handleFileSelect}
+            ref={newchatref}
+          />
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              newchatref.current.click();
+            }}
+            className="w-full p-2 flex items-center justify-center gap-4 border-[.1rem] border-gray-500 rounded-lg hover:bg-[#3C3D37] text-sm"
+          >
             <Plus size={15} />
             New Chat
           </button>

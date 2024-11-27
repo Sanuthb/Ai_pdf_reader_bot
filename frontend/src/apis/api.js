@@ -1,5 +1,5 @@
 import axios from "axios";
-export const fetch_data = async () => {
+export  const fetch_data = async () => {
   try {
     const response = await axios.get("http://localhost:8000/fetch_files");
     if (response.status == 200){
@@ -11,3 +11,6 @@ export const fetch_data = async () => {
     return [];
   }
 };
+
+
+export default  fetch_data

@@ -1,5 +1,4 @@
 import React from "react";
-import Sidebar from "../Components/Sidebar";
 import { useAuth } from "@clerk/clerk-react";
 import { Navigate } from "react-router-dom";
 import Hero from "../Components/Hero";
