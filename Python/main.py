@@ -275,30 +275,3 @@ async def delete_pdf(pdf_name: str, db: Session = Depends(get_db)):
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
-
-@app.post("/view_pdf/")
-async def view_pdf(pdf_name: str = Form(...), db: Session = Depends(get_db)):
-    try:
-        # Retrieve the PDF data from the database
-        pdf_data = db.query(PDFData).filter(PDFData.file_name == pdf_name).first()
-        if not pdf_data:
-            return JSONResponse({"error": f"PDF '{pdf_name}' not found in the database."}, status_code=404)
-
-        # Create a BytesIO stream for the PDF content
-        pdf_stream = io.BytesIO(pdf_data.file_content)
-
-        # Add headers to support iframe embedding
-        headers = {
-            "Content-Disposition": f"inline; filename={pdf_name}",
-            "Access-Control-Allow-Origin": "http://localhost:5173",  # Allowing your frontend to access the PDF
-            "Access-Control-Allow-Methods": "GET, POST",
-            "Access-Control-Allow-Headers": "Content-Type",
-        }
-
-        return StreamingResponse(
-            pdf_stream, 
-            media_type="application/pdf",
-            headers=headers
-        )
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
