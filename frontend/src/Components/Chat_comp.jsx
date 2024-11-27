@@ -1,17 +1,23 @@
 import { useState } from "react";
-import { Send } from "lucide-react";
+import { Send, X } from "lucide-react";
 import axios from "axios";
 import { useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { addMessage } from "../store/slices/chatSlice";
 import QuizMessage from "./QuizMessage";
-import '../Style/loading.css';
+import "../Style/loading.css";
+import ExtrachImages from "./ExtrachImages";
 
 const ChatComp = () => {
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
   const { filename } = useParams();
   const dispatch = useDispatch();
+  const [isImagbtn, setisImagbtn] = useState(false);
+
+  const handleImagbtnClick = () => {
+    setisImagbtn(!isImagbtn);
+  };
 
   const messages = useSelector(
     (state) =>
@@ -117,8 +123,27 @@ const ChatComp = () => {
     <div className="w-full p-2 flex flex-col gap-5 bg-secondary text-white border-l-[.1rem] border-gray-600">
       <div className="flex items-center justify-between p-2">
         <h1 className="text-xl font-medium">Chat</h1>
+        {isImagbtn && (
+          <div className="fixed top-0 left-0 w-full h-screen bg-black/90">
+            <div className="flex items-center justify-between p-4 ">
+              <h1 className="text-xl">Images Found from {filename}</h1>
+              <button
+                className="bg-primary rounded-full p-2"
+                onClick={handleImagbtnClick}
+              >
+                <X />
+              </button>
+            </div>
+            <ExtrachImages/>
+          </div>
+        )}
         <div className="flex gap-5 text-white">
-          <button className="bg-primary p-2 rounded-lg">Images</button>
+          <button
+            className="bg-primary p-2 rounded-lg"
+            onClick={handleImagbtnClick}
+          >
+            Images
+          </button>
           <button
             className="bg-primary p-2 rounded-lg"
             onClick={handleQuizClick}
@@ -139,15 +164,13 @@ const ChatComp = () => {
               <p className="max-w-[60%] p-3 rounded-lg bg-[#3c3d37] text-white">
                 {msg.text}
               </p>
+            ) : // Check if the message is a quiz and render accordingly
+            msg.isQuiz ? (
+              <QuizMessage quiz={msg.text} />
             ) : (
-              // Check if the message is a quiz and render accordingly
-              msg.isQuiz ? (
-                <QuizMessage quiz={msg.text} />
-              ) : (
-                <p className="max-w-[60%] p-3 rounded-lg bg-[#3c3d37] text-white">
-                  {msg.text}
-                </p>
-              )
+              <p className="max-w-[60%] p-3 rounded-lg bg-[#3c3d37] text-white">
+                {msg.text}
+              </p>
             )}
           </div>
         ))}

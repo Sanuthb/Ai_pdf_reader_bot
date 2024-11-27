@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Plus, FileText, MessageSquareMore } from "lucide-react";
+import { Plus, FileText } from "lucide-react";
 import Blank_comp from "./Blank_comp";
 import { UserButton, useUser } from "@clerk/clerk-react";
 import Signin from "./Signin";
@@ -8,7 +8,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { setFiles, setSelectedFile } from "../store/slices/fileSlice";
 import fetch_data from "../apis/api";
 import { addMessage } from "../store/slices/chatSlice";
-
 
 const Sidebar = React.memo(() => {
   const { isSignedIn } = useUser();
@@ -22,7 +21,7 @@ const Sidebar = React.memo(() => {
     const selectedFiles = event.target.files;
     handleFileUpload(selectedFiles);
   };
-  
+
   const handleFileUpload = async (selectedFiles) => {
     setIsUploading(true);
     const formData = new FormData();
@@ -44,7 +43,7 @@ const Sidebar = React.memo(() => {
       handleUploadSuccess(response.data.results);
     } catch (error) {
       console.error("Error uploading files:", error);
-    } 
+    }
   };
 
   const handleUploadSuccess = (results) => {
@@ -91,7 +90,6 @@ const Sidebar = React.memo(() => {
     }
   };
 
-
   useEffect(() => {
     const loadFiles = async () => {
       const fetchedFiles = await fetch_data();
@@ -119,14 +117,16 @@ const Sidebar = React.memo(() => {
           </h1>
         </div>
         <div className="flex items-center flex-col gap-5 mt-5">
-          <input
-            type="file"
-            multiple
-            accept=".pdf"
-            className="hidden"
-            onChange={handleFileSelect}
-            ref={newchatref}
-          />
+          {isSignedIn && (
+            <input
+              type="file"
+              multiple
+              accept=".pdf"
+              className="hidden"
+              onChange={handleFileSelect}
+              ref={newchatref}
+            />
+          )}
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -136,9 +136,6 @@ const Sidebar = React.memo(() => {
           >
             <Plus size={15} />
             New Chat
-          </button>
-          <button className="w-full p-2 flex items-center justify-center gap-4 border-[.1rem] border-gray-500 rounded-lg hover:bg-[#3C3D37] text-sm ">
-            <MessageSquareMore size={20} /> Interact
           </button>
         </div>
         {isSignedIn && (

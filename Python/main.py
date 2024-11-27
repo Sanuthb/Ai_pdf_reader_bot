@@ -16,6 +16,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from Db import get_db, PDFData
 from fastapi import Depends
 from sqlalchemy.orm import Session  
+from fastapi.staticfiles import StaticFiles
+
 
 load_dotenv()
 
@@ -26,6 +28,8 @@ if not api_key:
 genai.configure(api_key=api_key)
 
 app = FastAPI()
+
+app.mount("/temp_images", StaticFiles(directory="temp_images"), name="temp_images")
 
 app.add_middleware(
     CORSMiddleware,
@@ -177,10 +181,6 @@ async def generate_quiz(pdf_name: str = Form(...)):
 
         Quiz:
         """
-
-
-
-
         prompt = PromptTemplate(template=quiz_prompt, input_variables=["context"])
         
         # Initialize the model
@@ -205,6 +205,44 @@ async def fetch_files(db: Session = Depends(get_db)):
     if not pdf_data:
         return JSONResponse({"message": "No PDF files found in the database.", "files": []})
     return {"files": [pdf.file_name for pdf in pdf_data]}
+
+@app.post("/extract_images/")
+async def extract_images(pdf_name: str = Form(...), db: Session = Depends(get_db)):
+    try:
+        # Retrieve the PDF data from the database
+        pdf_data = db.query(PDFData).filter(PDFData.file_name == pdf_name).first()
+        if not pdf_data:
+            return JSONResponse({"error": f"PDF '{pdf_name}' not found in the database."}, status_code=404)
+
+        # Read the PDF content
+        pdf_bytes = io.BytesIO(pdf_data.file_content)
+        doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+
+        # Extract images from the PDF
+        extracted_images = []
+        for page_num in range(len(doc)):
+            page = doc.load_page(page_num)
+            for img_index, img in enumerate(page.get_images(full=True)):
+                xref = img[0]
+                base_image = doc.extract_image(xref)
+                image_bytes = base_image["image"]
+                image = Image.open(io.BytesIO(image_bytes))
+
+                # Save the image temporarily
+                image_path = f"temp_images/{pdf_name}_page_{page_num + 1}_img_{img_index + 1}.png"
+                os.makedirs(os.path.dirname(image_path), exist_ok=True)
+                image.save(image_path)
+                extracted_images.append(image_path)
+
+        if not extracted_images:
+            return JSONResponse({"message": "No images found in the provided PDF."}, status_code=404)
+
+        # Return the list of extracted image paths
+        return JSONResponse({"images": extracted_images})
+
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
 
 
 @app.post("/view_pdf/")

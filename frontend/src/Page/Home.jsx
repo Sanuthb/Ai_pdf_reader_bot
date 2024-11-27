@@ -12,9 +12,9 @@ const Home = () => {
   }
 
   return (
-    <div className="flex">
+    <>
         <Hero/>
-    </div>
+    </>
   );
 };
 
