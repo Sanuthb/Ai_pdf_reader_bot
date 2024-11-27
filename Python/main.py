@@ -17,6 +17,8 @@ from Db import get_db, PDFData
 from fastapi import Depends
 from sqlalchemy.orm import Session  
 from fastapi.staticfiles import StaticFiles
+from fastapi import HTTPException
+import shutil
 
 
 load_dotenv()
@@ -142,8 +144,8 @@ async def ask_question(question: str = Form(...), pdf_name: str = Form(...)):
         
         # Create a conversational chain
         prompt_template = """
-        Answer the question as detailed as possible from the provided context.
-        If the answer is not in the context, say "Answer is not available in the context."
+        Answer the question as detailed as possible from the provided context.If  
+        the answer is not in the context  then fetch the answer from Gemain AI.
         Context:\n {context}\n
         Question:\n {question}\n
         Answer:
@@ -243,6 +245,35 @@ async def extract_images(pdf_name: str = Form(...), db: Session = Depends(get_db
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
+
+@app.delete("/delete_pdf/")
+async def delete_pdf(pdf_name: str, db: Session = Depends(get_db)):
+    try:
+        # Check if the PDF exists in the database
+        pdf_data = db.query(PDFData).filter(PDFData.file_name == pdf_name).first()
+        if not pdf_data:
+            raise HTTPException(status_code=404, detail=f"PDF '{pdf_name}' not found in the database.")
+
+        # Construct the FAISS index file path
+        faiss_index_path = os.path.abspath(f"faiss_index_{pdf_name}")
+        if os.path.exists(faiss_index_path):
+            try:
+                os.remove(faiss_index_path)
+            except PermissionError:
+                shutil.rmtree(faiss_index_path)
+        else:
+            raise HTTPException(status_code=404, detail=f"FAISS index for '{pdf_name}' not found.")
+
+        # Remove the PDF data from the database
+        db.delete(pdf_data)
+        db.commit()
+
+        return JSONResponse({"message": f"PDF '{pdf_name}' and its FAISS index were deleted successfully."})
+
+    except HTTPException as e:
+        return JSONResponse({"error": e.detail}, status_code=e.status_code)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 @app.post("/view_pdf/")

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Send, X } from "lucide-react";
 import axios from "axios";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { addMessage } from "../store/slices/chatSlice";
 import QuizMessage from "./QuizMessage";
@@ -14,6 +14,26 @@ const ChatComp = () => {
   const { filename } = useParams();
   const dispatch = useDispatch();
   const [isImagbtn, setisImagbtn] = useState(false);
+  const navigate = useNavigate()
+
+
+  const handleDelete = async()=>{
+    try {
+        const response = await axios.delete(`http://localhost:8000/delete_pdf/`, {
+            params: { pdf_name: filename }
+        });
+
+        if (response.status === 200) {
+            alert("File deleted successfully")
+            navigate("/dashboard")
+        } else {
+            alert("Error deleting file")
+        }
+    } catch (error) {
+        console.error(error);
+    }
+    
+  }
 
   const handleImagbtnClick = () => {
     setisImagbtn(!isImagbtn);
@@ -138,6 +158,12 @@ const ChatComp = () => {
           </div>
         )}
         <div className="flex gap-5 text-white">
+        <button
+            className="bg-red-500 p-2 rounded-lg"
+            onClick={handleDelete}
+          >
+            Delete
+          </button>
           <button
             className="bg-primary p-2 rounded-lg"
             onClick={handleImagbtnClick}
