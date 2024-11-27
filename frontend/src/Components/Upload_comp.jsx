@@ -14,7 +14,6 @@ const Upload_comp = () => {
   const navigate = useNavigate();
 
   const formatSummary = (summary) => {
-    // Clean up the summary text
     return summary
       .trim()
       .replace(/^Summary:|\n{2,}/g, "")
@@ -26,7 +25,6 @@ const Upload_comp = () => {
     results.forEach((result) => {
       const formattedSummary = formatSummary(result.summary);
 
-      // Add system message about successful upload
       dispatch(
         addMessage({
           pdfName: result.file_name,
@@ -37,7 +35,6 @@ const Upload_comp = () => {
         })
       );
 
-      // Add the formatted summary
       dispatch(
         addMessage({
           pdfName: result.file_name,
@@ -48,7 +45,6 @@ const Upload_comp = () => {
         })
       );
 
-      // Add a helpful prompt
       dispatch(
         addMessage({
           pdfName: result.file_name,
@@ -60,7 +56,6 @@ const Upload_comp = () => {
       );
     });
 
-    // Navigate to the chat interface for the first uploaded file
     if (results.length > 0) {
       navigate(`/dashboard/chat/${results[0].file_name}`);
     }

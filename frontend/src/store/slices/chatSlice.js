@@ -1,7 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
-  conversations: {}, // { pdfName: [messages] }
+  conversations: {}, 
 };
 
 const chatSlice = createSlice({

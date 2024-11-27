@@ -59,7 +59,7 @@ const ChatComp = () => {
         message: { type: "user", text: question },
       })
     );
-    setLoading(true); // Set loading to true
+    setLoading(true); 
 
     try {
       const response = await axios.post(
@@ -90,7 +90,7 @@ const ChatComp = () => {
         })
       );
     } finally {
-      setLoading(false); // Reset loading state
+      setLoading(false); 
     }
 
     setQuestion("");
@@ -104,7 +104,7 @@ const ChatComp = () => {
   };
 
   const handleQuizClick = async () => {
-    setLoading(true); // Set loading to true for quiz generation
+    setLoading(true); 
     try {
       const response = await axios.post(
         "http://localhost:8000/quiz/",
@@ -116,7 +116,6 @@ const ChatComp = () => {
         }
       );
 
-      // Add a flag to indicate it's a quiz message
       dispatch(
         addMessage({
           pdfName: filename,
@@ -135,7 +134,7 @@ const ChatComp = () => {
         })
       );
     } finally {
-      setLoading(false); // Reset loading state
+      setLoading(false); 
     }
   };
 
@@ -190,7 +189,7 @@ const ChatComp = () => {
               <p className="max-w-[60%] p-3 rounded-lg bg-[#3c3d37] text-white">
                 {msg.text}
               </p>
-            ) : // Check if the message is a quiz and render accordingly
+            ) : 
             msg.isQuiz ? (
               <QuizMessage quiz={msg.text} />
             ) : (
