@@ -31,18 +31,6 @@ The backend is implemented using FastAPI for handling API requests and AI-based 
 - **LangChain**: Framework for AI-driven document understanding.
 - **FAISS**: Vector search for document embeddings.
 
-## Project Structure
-```
-/ai-pdf-reader
-│── frontend/         # React frontend
-│── backend/          # FastAPI backend
-│── database/         # PostgreSQL setup
-│── models/           # AI models & embeddings
-│── scripts/          # Utility scripts
-│── requirements.txt  # Backend dependencies
-│── package.json      # Frontend dependencies
-```
-
 ## Installation & Setup
 ### Backend
 ```sh
@@ -64,20 +52,9 @@ npm install
 npm run dev
 ```
 
-## API Endpoints
-| Method | Endpoint | Description |
-|--------|-------------|---------------------------|
-| POST | /upload | Uploads a PDF for processing |
-| GET | /document/{id} | Retrieves processed document |
-| GET | /search | Searches documents via AI |
 
 ## Authentication
 User authentication is handled via **Clerk** on the frontend, ensuring secure access control.
-
-## Deployment
-- **Frontend**: Hosted on Vercel / Netlify
-- **Backend**: Hosted on Render / AWS / DigitalOcean
-- **Database**: Managed PostgreSQL instance
 
 ## Future Enhancements
 - **Chatbot Integration**: AI assistant for querying PDFs.
