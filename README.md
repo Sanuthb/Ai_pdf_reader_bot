@@ -31,13 +31,6 @@ The backend is implemented using FastAPI for handling API requests and AI-based 
 - **LangChain**: Framework for AI-driven document understanding.
 - **FAISS**: Vector search for document embeddings.
 
-### Other Dependencies
-- **Streamlit**: For interactive AI demos (optional).
-- **Pillow**: Image processing in PDFs.
-- **PyMuPDF / PyPDF2**: PDF text extraction.
-- **FastAPI-CLI**: Command-line interface for FastAPI.
-- **Celery** (optional): Task queuing for heavy AI processing.
-
 ## Project Structure
 ```
 /ai-pdf-reader
